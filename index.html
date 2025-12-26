@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Recorder - Microphone Selection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            scrollbar-gutter: stable;
+        }
+
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .section {
+            margin-bottom: 25px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        select,
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        select:hover,
+        input:hover {
+            border-color: #667eea;
+        }
+
+        select:focus,
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-start {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-start:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-start:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-stop {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-stop:hover:not(:disabled) {
+            background: #ff5252;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn-stop:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            visibility: visible;
+            opacity: 1;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #81c784;
+        }
+
+        .status.active {
+            visibility: visible;
+            opacity: 1;
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #81c784;
+        }
+
+        .status.hidden {
+            visibility: hidden;
+            opacity: 0;
+            background: #f0f0f0;
+            color: #999;
+            border: 1px solid #ddd;
+        }
+
+        .status.error {
+            visibility: visible;
+            opacity: 1;
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef5350;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status.active .status-dot {
+            background: #4caf50;
+        }
+
+        .status.error .status-dot {
+            background: #f44336;
+            animation: none;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .audio-section {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #1565c0;
+            line-height: 1.6;
+        }
+
+        .timer {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+            min-height: 30px;
+        }
+
+        .audio-level-section {
+            margin-bottom: 20px;
+        }
+
+        .audio-level-section label {
+            margin-bottom: 10px;
+        }
+
+        .device-info {
+            font-size: 12px;
+            color: #999;
+            margin-top: 8px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            max-height: 80px;
+            overflow-y: auto;
+        }
+
+        .mic-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            border: 2px solid #ccc;
+        }
+
+        .mic-status.on {
+            background: #4caf50;
+            border-color: #2e7d32;
+            animation: pulse 1.5s infinite;
+        }
+
+        .mic-status.off {
+            background: #f44336;
+            border-color: #c62828;
+        }
+
+        .mic-status-info {
+            font-size: 11px;
+            color: #666;
+            margin-top: 6px;
+            padding: 6px 8px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            line-height: 1.4;
+        }
+
+        /* Scrollable list styling */
+        #transcriptionList {
+            scrollbar-width: thin;
+            scrollbar-color: #667eea #f0f0f0;
+        }
+
+        #transcriptionList::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #transcriptionList::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border-radius: 10px;
+        }
+
+        #transcriptionList::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        #transcriptionList::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎤 Audio Translator</h1>
+            <p class="subtitle">For hotels and restaurants</p>
+        </div>
+
+        <!-- Microphone Selection -->
+
+
+        <!-- Language Selection -->
+        <div class="section">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    <label for="inputLang">Input Language:</label>
+                    <select id="inputLang">
+                        <option value="vi-VN" selected>Vietnamese</option>
+                        <option value="en-US">English</option>
+                        <option value="zh-CN">Chinese (Simplified)</option>
+                        <option value="ja-JP">Japanese</option>
+                        <option value="ko-KR">Korean</option>
+                        <option value="th-TH">Thai</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="outputLang">Output Language:</label>
+                    <select id="outputLang">
+                        <option value="vi">Vietnamese</option>
+                        <option value="en">English</option>
+                        <option value="zh" selected>Chinese</option>
+                        <option value="ja">Japanese</option>
+                        <option value="ko">Korean</option>
+                        <option value="th">Thai</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 12px;">
+                <label for="voiceSelect">Select Voice:</label>
+                <select id="voiceSelect">
+                    <option value="">Loading voices...</option>
+                </select>
+            </div>
+        </div>
+
+
+        <!-- Timer
+        <div class="timer" id="timer"></div> -->
+
+        <!-- Status -->
+        <div class="status" id="status">
+            <span class="status-dot"></span>
+            <span id="statusText">Ready</span>
+        </div>
+
+        <!-- Control Buttons -->
+        <div style="display: flex; justify-content: center; margin-bottom: 20px;">
+            <button class="btn-start" id="startBtn" onclick="handleStartRecording()" style="min-width: 200px;">Start
+                Recording</button>
+        </div>
+
+        <!-- Transcription History -->
+        <div class="audio-section">
+            <label>📝 Transcription History:</label>
+            <div id="transcriptionList" style="max-height: 400px; overflow-y: auto; font-size: 14px;">
+                <p style="color: #999; text-align: center; padding: 20px 0;">No transcriptions yet...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load external JavaScript files -->
+    <!-- Vosk Speech Recognition (Offline) - Alternative CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/vosk-browser@0.3.0/vosk.js"></script>
+    <!-- Speech Recognition Polyfill -->
+    <script src="speech-recognition.js"></script>
+    <!-- Vietnamese Transcription Module -->
+    <script src="vietnamese-transcriber.js"></script>
+    <!-- Audio Recorder Core -->
+    <script src="audio-recorder-core.js"></script>
+    <!-- Translator Module -->
+    <script src="translator.js"></script>
+    <!-- App Main Module -->
+    <script src="app.js"></script>
+</body>
+
+</html>
