@@ -4,6 +4,9 @@
 const translator = new TranslationService();
 const transcriber = new VietnameseTranscriber();
 
+// Audio Recorder for mic signal detection (separate from transcriber)
+const audioRecorder = new AudioRecorder();
+
 // Optional: API keys for better transcription (leave empty to use Web Speech API)
 const WHISPER_API_KEY = ""; // From https://platform.openai.com/api-keys
 const GOOGLE_CLOUD_API_KEY = ""; // From https://cloud.google.com
@@ -17,6 +20,14 @@ const statusText = document.getElementById("statusText");
 const timerEl = document.getElementById("timer");
 const startBtn = document.getElementById("startBtn");
 const levelCanvas = document.getElementById("levelCanvas");
+
+// Mic Signal Detector UI Elements
+const micStatusEl = document.getElementById("micStatus");
+const audioLevelBar = document.getElementById("audioLevelBar");
+const audioLevelText = document.getElementById("audioLevelText");
+
+// Mic Signal Detector instance (will be initialized later)
+let micSignalDetector = null;
 
 // Make translator and transcriber global for onclick handlers
 window.translator = translator;
@@ -179,6 +190,39 @@ voiceSelect.addEventListener("change", () => {
 // Request permission and load devices automatically when page loads
 document.addEventListener("DOMContentLoaded", async () => {
   try {
+    // Initialize audio recorder and get mic devices
+    const result = await audioRecorder.initializeAudio();
+
+    if (result && result.audioInputs) {
+      console.log("✓ Audio recorder initialized with", result.audioInputs.length, "devices");
+
+      // Initialize Mic Signal Detector with audio recorder's analyser
+      micSignalDetector = new MicSignalDetector(audioRecorder.analyser, {
+        signalThreshold: 15,
+        debounceMs: 2000,
+      });
+
+      // Setup callbacks for UI updates
+      micSignalDetector.onSignalStateChanged = (state) => {
+        if (state.hasSignal) {
+          micStatusEl.textContent = "ON";
+          micStatusEl.style.color = "#51cf66";
+        } else {
+          micStatusEl.textContent = "OFF";
+          micStatusEl.style.color = "#ff6b6b";
+        }
+      };
+
+      micSignalDetector.onAudioLevelChanged = (level) => {
+        audioLevelBar.style.width = level + "%";
+        audioLevelText.textContent = level;
+      };
+
+      // Start monitoring mic signal
+      micSignalDetector.startMonitoring();
+      console.log("✓ Mic signal detector started");
+    }
+
     // Request microphone permission once for Vietnamese transcriber
     await transcriber.requestPermissionOnce();
 
