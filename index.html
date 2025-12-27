@@ -12,13 +12,6 @@
     <div class="container">
         <div class="header">
             <h1>🎤 Audio Translator</h1>
-            <p class="subtitle" id="versionText" onclick="toggleWhatsNew()"
-                style="cursor: pointer; transition: color 0.2s ease;" onmouseover="this.style.color='#667eea'"
-                onmouseout="this.style.color='#666'">Loading info...</p>
-            <p class="subtitle" style="font-size: 12px; margin-top: 8px;">
-                Contact: <a id="emailLink" href="#"
-                    style="color: #667eea; text-decoration: none;">tr.tuanpham@gmail.com</a>
-            </p>
         </div>
 
         <!-- Microphone Selection -->
@@ -96,6 +89,17 @@
             <div id="transcriptionList" style="max-height: 400px; overflow-y: auto; font-size: 14px;">
                 <p style="color: #999; text-align: center; padding: 20px 0;">No transcriptions yet...</p>
             </div>
+        </div>
+
+        <!-- Version & Contact Info -->
+        <div style="text-align: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
+            <p class="subtitle" id="versionText" onclick="toggleWhatsNew()"
+                style="cursor: pointer; transition: color 0.2s ease; margin-bottom: 8px;" onmouseover="this.style.color='#667eea'"
+                onmouseout="this.style.color='#666'">Loading info...</p>
+            <p class="subtitle" style="font-size: 12px; margin-top: 8px;">
+                📧 Contact: <a id="emailLink" href="#"
+                    style="color: #667eea; text-decoration: none;">tr.tuanpham@gmail.com</a>
+            </p>
         </div>
     </div>
 
