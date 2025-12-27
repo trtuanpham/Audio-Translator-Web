@@ -29,6 +29,10 @@ const audioLevelText = document.getElementById("audioLevelText");
 // Mic Signal Detector instance (will be initialized later)
 let micSignalDetector = null;
 
+// Auto-start recording feature
+let autoStartEnabled = true; // Toggle for auto-start on mic detection
+let isAutoStartRecording = false; // Track if recording was auto-started
+
 // Make translator and transcriber global for onclick handlers
 window.translator = translator;
 window.transcriber = transcriber;
@@ -102,6 +106,9 @@ function handleStartRecording() {
           translatedText,
           () => {
             console.log("✓ Translation and speech complete");
+            // Reset auto-start flag when transcription is complete
+            isAutoStartRecording = false;
+            console.log("✓ Auto-start flag reset, ready for next detection");
           },
           outputLangFull_TTS,
           selectedVoiceName
@@ -114,6 +121,21 @@ function handleStartRecording() {
 function handleStopRecording() {
   console.log("📍 Stopping mic capture from app.js");
   transcriber.stop();
+  isAutoStartRecording = false; // Reset auto-start flag
+}
+
+/**
+ * Toggle auto-start recording feature
+ */
+function toggleAutoStart() {
+  autoStartEnabled = !autoStartEnabled;
+  const autoStartBtn = document.getElementById("autoStartBtn");
+  if (autoStartBtn) {
+    autoStartBtn.style.background = autoStartEnabled ? "#51cf66" : "#ccc";
+    autoStartBtn.textContent = autoStartEnabled ? "🔄 Auto-Start: ON" : "⏹ Auto-Start: OFF";
+  }
+  console.log("Auto-start recording:", autoStartEnabled ? "ENABLED" : "DISABLED");
+  onStatusChanged(`Auto-start ${autoStartEnabled ? "enabled" : "disabled"}`, "active");
 }
 
 // Status update helper
@@ -207,9 +229,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (state.hasSignal) {
           micStatusEl.textContent = "ON";
           micStatusEl.style.color = "#51cf66";
+
+          // Auto-start recording when mic detects signal
+          if (autoStartEnabled && !isAutoStartRecording && !transcriber.isTranscribing) {
+            console.log("🎤 Mic detected! Auto-starting recording...");
+            isAutoStartRecording = true;
+            handleStartRecording();
+          }
         } else {
           micStatusEl.textContent = "OFF";
           micStatusEl.style.color = "#ff6b6b";
+
+          // Just track mic status, don't auto-stop
+          // Let speech recognition handle stopping on its own
         }
       };
 

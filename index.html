@@ -321,7 +321,7 @@
     <div class="container">
         <div class="header">
             <h1>🎤 Audio Translator</h1>
-            <p class="subtitle">For hotels and restaurants</p>
+            <p class="subtitle">Demo product by Tuan Pham</p>
         </div>
 
         <!-- Microphone Selection -->
@@ -385,9 +385,12 @@
         </div>
 
         <!-- Control Buttons -->
-        <div style="display: flex; justify-content: center; margin-bottom: 20px;">
-            <button class="btn-start" id="startBtn" onclick="handleStartRecording()" style="min-width: 200px;">Start
+        <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap;">
+            <button class="btn-start" id="startBtn" onclick="handleStartRecording()" style="min-width: 150px;">Start
                 Recording</button>
+            <button id="autoStartBtn" onclick="toggleAutoStart()"
+                style="padding: 12px 20px; background: #51cf66; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s;">🔄
+                Auto-Start: ON</button>
         </div>
 
         <!-- Transcription History -->
