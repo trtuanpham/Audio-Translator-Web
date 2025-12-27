@@ -1,6 +1,6 @@
 /**
- * Vietnamese Transcription Module
- * Provides simple functions to convert Vietnamese audio to text
+ * Speech Transcription Module
+ * Provides functions to convert speech audio to text in multiple languages
  */
 
 class SpeechTranscriber {
@@ -12,6 +12,7 @@ class SpeechTranscriber {
     this.isTranscribing = false;
     this.onStatusChanged = null;
     this.permissionGranted = false; // Track if permission was requested
+    this.fileCleanupInterval = null; // Track cleanup interval for fromFile()
   }
 
   /**
@@ -47,7 +48,7 @@ class SpeechTranscriber {
   }
 
   /**
-   * Initialize Speech Recognition for Vietnamese
+   * Initialize Speech Recognition for multiple languages
    */
   _initializeRecognition() {
     try {
@@ -56,7 +57,7 @@ class SpeechTranscriber {
         return null;
       }
 
-      console.log("📍 Initializing Vietnamese Speech Recognition");
+      console.log("📍 Initializing Speech Recognition");
 
       const recognition = new window.SpeechRecognition();
       recognition.lang = "vi-VN"; // Vietnamese
@@ -70,7 +71,7 @@ class SpeechTranscriber {
         if (this.isTranscribing) {
           this.onStatusChanged?.("🎤 Listening...", "active");
         }
-        console.log("🎤 Vietnamese transcription started");
+        console.log("🎤 Speech transcription started");
         currentTranscript = "";
       };
 
@@ -89,7 +90,7 @@ class SpeechTranscriber {
           return;
         }
 
-        console.log("✓ Vietnamese text:", currentTranscript);
+        console.log("✓ Transcribed text:", currentTranscript);
         this.onStatusChanged?.("Transcription complete", "success");
 
         // Call callback if exists (for backward compatibility)
@@ -132,10 +133,10 @@ class SpeechTranscriber {
 
   /**
    * Transcribe from microphone with configurable language - returns a Promise
-   * @param {string} language - Language code (default: vi-VN)
+   * @param {string} language - Language code (default: en-US)
    * @returns {Promise<string>} - Promise that resolves with transcribed text
    */
-  fromMicrophone(language = "vi-VN") {
+  fromMicrophone(language = "en-US") {
     return new Promise((resolve, reject) => {
       try {
         if (!this.recognition) {
@@ -162,9 +163,9 @@ class SpeechTranscriber {
   }
 
   /**
-   * Transcribe Vietnamese from audio file using Webkit
+   * Transcribe speech from audio file
    * @param {Blob} audioBlob - Audio file to transcribe
-   * @param {Function} onTranscribed - Callback with Vietnamese text
+   * @param {Function} onTranscribed - Callback with transcribed text
    */
   async fromFile(audioBlob, onTranscribed) {
     try {
@@ -172,7 +173,7 @@ class SpeechTranscriber {
         throw new Error("Speech Recognition not supported");
       }
 
-      this.onStatusChanged?.("Transcribing Vietnamese audio...", "active");
+      this.onStatusChanged?.("Transcribing audio...", "active");
 
       const audioUrl = URL.createObjectURL(audioBlob);
       const audio = new Audio(audioUrl);
@@ -186,27 +187,38 @@ class SpeechTranscriber {
 
       this.recognition.start();
 
+      // Clear any previous cleanup interval
+      if (this.fileCleanupInterval) {
+        clearInterval(this.fileCleanupInterval);
+      }
+
       // Clean up after transcription
-      const cleanup = setInterval(() => {
+      this.fileCleanupInterval = setInterval(() => {
         if (!this.isTranscribing) {
           audio.pause();
           URL.revokeObjectURL(audioUrl);
-          clearInterval(cleanup);
+          clearInterval(this.fileCleanupInterval);
+          this.fileCleanupInterval = null;
         }
       }, 100);
     } catch (error) {
       console.error("❌ Error:", error);
       this.onStatusChanged?.("Error: " + error.message, "error");
+      // Cleanup interval on error
+      if (this.fileCleanupInterval) {
+        clearInterval(this.fileCleanupInterval);
+        this.fileCleanupInterval = null;
+      }
     }
   }
 
   /**
    * Smart transcription with API fallback chain
-   * Priority: Whisper > Google Cloud > Webkit > Vosk > Manual
+   * Priority: Whisper > Google Cloud > Web Speech API > Vosk > Manual
    * @param {Blob} audioBlob - Audio file to transcribe
    * @param {string} whisperApiKey - OpenAI API key (optional)
    * @param {string} googleApiKey - Google Cloud API key (optional)
-   * @param {Function} onTranscribed - Callback with Vietnamese text
+   * @param {Function} onTranscribed - Callback with transcribed text
    */
   async smart(audioBlob, whisperApiKey, googleApiKey, onTranscribed) {
     try {
@@ -359,11 +371,11 @@ class SpeechTranscriber {
    * Manual input fallback
    */
   _manualInput(onTranscribed) {
-    const vietnameseText = prompt("Please enter the Vietnamese text:") || "";
-    if (vietnameseText) {
-      console.log("✓ Manual input:", vietnameseText);
+    const inputText = prompt("Please enter the text:") || "";
+    if (inputText) {
+      console.log("✓ Manual input:", inputText);
       this.onStatusChanged?.("Text ready", "success");
-      onTranscribed?.(vietnameseText);
+      onTranscribed?.(inputText);
     }
   }
 

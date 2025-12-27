@@ -259,7 +259,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     micSignalDetector.startMonitoring();
     console.log("✓ Mic signal detector started");
 
-    // Request microphone permission once for Vietnamese transcriber
+    // Request microphone permission once for transcriber
     await transcriber.requestPermissionOnce();
 
     // Wait for voices to load
@@ -269,8 +269,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Voices already loaded
       populateVoiceDropdown();
     } else {
-      // Wait for voiceschanged event
-      synthesis.addEventListener("voiceschanged", populateVoiceDropdown);
+      // Wait for voiceschanged event (store reference for later removal)
+      const voicesChangedHandler = populateVoiceDropdown;
+      synthesis.addEventListener("voiceschanged", voicesChangedHandler);
     }
   } catch (error) {
     console.error("Error:", error);
@@ -492,4 +493,54 @@ function displayVoicesByLanguage() {
   }
 
   voiceList.innerHTML = html;
+}
+
+// ============================================
+// Cleanup Function - Fix Memory Leaks
+// ============================================
+
+/**
+ * Cleanup all resources before page unload
+ */
+function cleanupResources() {
+  console.log("🧹 Cleaning up resources...");
+
+  // Stop mic signal detector
+  if (micSignalDetector) {
+    micSignalDetector.stop();
+    micSignalDetector = null;
+  }
+
+  // Stop transcription
+  if (transcriber) {
+    transcriber.abort();
+  }
+
+  // Stop speech synthesis
+  if (window.speechSynthesis) {
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
+  }
+
+  // Remove event listeners
+  const synthesis = window.speechSynthesis;
+  synthesis.removeEventListener("voiceschanged", populateVoiceDropdown);
+
+  console.log("✓ Cleanup complete");
+}
+
+// Cleanup on page unload
+window.addEventListener("beforeunload", cleanupResources);
+window.addEventListener("unload", cleanupResources);
+// Also cleanup on page hide (for PWAs and tab switches)
+if (document.hidden !== undefined) {
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+      console.log("Page hidden, pausing monitoring...");
+      if (micSignalDetector) {
+        micSignalDetector.stopMonitoring();
+      }
+    }
+  });
 }
