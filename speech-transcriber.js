@@ -3,11 +3,13 @@
  * Provides simple functions to convert Vietnamese audio to text
  */
 
-class VietnameseTranscriber {
+class SpeechTranscriber {
   constructor() {
-    this.isTranscribing = false;
     this.currentCallback = null;
+    this.currentResolve = null;
+    this.currentReject = null;
     this.recognition = this._initializeRecognition();
+    this.isTranscribing = false;
     this.onStatusChanged = null;
     this.permissionGranted = false; // Track if permission was requested
   }
@@ -54,6 +56,8 @@ class VietnameseTranscriber {
         return null;
       }
 
+      console.log("📍 Initializing Vietnamese Speech Recognition");
+
       const recognition = new window.SpeechRecognition();
       recognition.lang = "vi-VN"; // Vietnamese
       recognition.continuous = false;
@@ -62,9 +66,10 @@ class VietnameseTranscriber {
       let currentTranscript = "";
 
       recognition.onstart = () => {
-        this.isTranscribing = true;
         this.permissionGranted = true; // Permission granted once started
-        this.onStatusChanged?.("🎤 Listening...", "active");
+        if (this.isTranscribing) {
+          this.onStatusChanged?.("🎤 Listening...", "active");
+        }
         console.log("🎤 Vietnamese transcription started");
         currentTranscript = "";
       };
@@ -76,20 +81,46 @@ class VietnameseTranscriber {
       };
 
       recognition.onend = () => {
-        this.isTranscribing = false;
+        if (!this.isTranscribing) {
+          return;
+        }
+
+        if (currentTranscript.trim() === "") {
+          return;
+        }
+
         console.log("✓ Vietnamese text:", currentTranscript);
         this.onStatusChanged?.("Transcription complete", "success");
 
+        // Call callback if exists (for backward compatibility)
         if (this.currentCallback) {
           this.currentCallback(currentTranscript);
           this.currentCallback = null;
         }
+
+        // Resolve Promise if exists
+        if (this.currentResolve) {
+          this.currentResolve(currentTranscript);
+          this.currentResolve = null;
+          this.currentReject = null;
+        }
+
+        // Reset for next use
+        currentTranscript = "";
+        this.isTranscribing = false;
       };
 
       recognition.onerror = (event) => {
         this.isTranscribing = false;
         console.error("❌ Transcription error:", event.error);
         this.onStatusChanged?.("Error: " + event.error, "error");
+
+        // Reject Promise if exists
+        if (this.currentReject) {
+          this.currentReject(new Error("Transcription error: " + event.error));
+          this.currentResolve = null;
+          this.currentReject = null;
+        }
       };
 
       return recognition;
@@ -100,31 +131,34 @@ class VietnameseTranscriber {
   }
 
   /**
-   * Transcribe from microphone with configurable language
-   * @param {Function} onTranscribed - Callback with transcribed text
+   * Transcribe from microphone with configurable language - returns a Promise
    * @param {string} language - Language code (default: vi-VN)
+   * @returns {Promise<string>} - Promise that resolves with transcribed text
    */
-  fromMicrophone(onTranscribed, language = "vi-VN") {
-    try {
-      if (!this.recognition) {
-        throw new Error("Speech Recognition not supported");
+  fromMicrophone(language = "vi-VN") {
+    return new Promise((resolve, reject) => {
+      try {
+        if (!this.recognition) {
+          throw new Error("Speech Recognition not supported");
+        }
+
+        // Set recognition language dynamically
+        this.recognition.lang = language;
+
+        // Store resolve/reject for this transcription session
+        this.currentResolve = resolve;
+        this.currentReject = reject;
+        this.currentCallback = null; // Clear any old callback
+        this.isTranscribing = true;
+        this.recognition.start();
+        this.onStatusChanged?.("Recording audio...", "active");
+      } catch (error) {
+        this.isTranscribing = false;
+        console.error("❌ Error:", error);
+        this.onStatusChanged?.("Error: " + error.message, "error");
+        reject(error);
       }
-
-      if (this.isTranscribing) {
-        console.warn("⚠️ Already transcribing");
-        return;
-      }
-
-      // Set recognition language dynamically
-      this.recognition.lang = language;
-
-      this.currentCallback = onTranscribed;
-      this.recognition.start();
-      this.onStatusChanged?.("Recording audio...", "active");
-    } catch (error) {
-      console.error("❌ Error:", error);
-      this.onStatusChanged?.("Error: " + error.message, "error");
-    }
+    });
   }
 
   /**
@@ -355,4 +389,4 @@ class VietnameseTranscriber {
 }
 
 // Export
-window.VietnameseTranscriber = VietnameseTranscriber;
+window.SpeechTranscriber = SpeechTranscriber;

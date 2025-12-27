@@ -2,14 +2,7 @@
 
 // Initialize translator and transcriber
 const translator = new TranslationService();
-const transcriber = new VietnameseTranscriber();
-
-// Audio Recorder for mic signal detection (separate from transcriber)
-const audioRecorder = new AudioRecorder();
-
-// Optional: API keys for better transcription (leave empty to use Web Speech API)
-const WHISPER_API_KEY = ""; // From https://platform.openai.com/api-keys
-const GOOGLE_CLOUD_API_KEY = ""; // From https://cloud.google.com
+const transcriber = new SpeechTranscriber();
 
 // DOM Elements
 const inputLangSelect = document.getElementById("inputLang");
@@ -36,6 +29,26 @@ let isAutoStartRecording = false; // Track if recording was auto-started
 // Make translator and transcriber global for onclick handlers
 window.translator = translator;
 window.transcriber = transcriber;
+
+// Map language codes to full locale codes for TTS
+const LANG_MAP = {
+  vi: "vi-VN",
+  en: "en-US",
+  zh: "zh-CN",
+  ja: "ja-JP",
+  ko: "ko-KR",
+  th: "th-TH",
+};
+
+// Map language to test phrase
+const TEST_PHRASES = {
+  vi: "Xin chào",
+  en: "Hello",
+  zh: "你好",
+  ja: "こんにちは",
+  ko: "안녕하세요",
+  th: "สวัสดี",
+};
 
 // ============================================
 // Recording Control Functions
@@ -71,51 +84,65 @@ function addToTranscriptionList(inputText, outputText) {
   }
 }
 
-function handleStartRecording() {
+/**
+ * Trigger auto-start recording when mic detects signal
+ */
+async function triggerAutoStart() {
+  if (autoStartEnabled && !transcriber.isTranscribing) {
+    console.log("🎤 Mic detected! Auto-starting recording...");
+    isAutoStartRecording = true;
+    await handleStartRecording();
+  }
+}
+
+async function handleStartRecording() {
   console.log("📍 Starting mic capture from app.js");
+
+  // Make sure transcriber is ready
+  if (transcriber.isTranscribing) {
+    console.warn("⚠️ Transcriber already transcribing, stopping first...");
+    transcriber.stop();
+    return;
+  }
+
   const inputLangFull = inputLangSelect.value; // vi-VN, en-US, etc
   const inputLang = inputLangFull.split("-")[0]; // vi, en, zh, etc
 
-  transcriber.fromMicrophone((transcribedText) => {
-    if (transcribedText) {
-      console.log("Text captured:", transcribedText);
+  try {
+    // Wait for transcription from microphone
+    const transcribedText = await transcriber.fromMicrophone(inputLangFull);
 
-      // Get output language
-      const outputLang = outputLangSelect.value;
-
-      // Map language codes to full locale codes for TTS
-      const langMap = {
-        vi: "vi-VN",
-        en: "en-US",
-        zh: "zh-CN",
-        ja: "ja-JP",
-        ko: "ko-KR",
-        th: "th-TH",
-      };
-      const outputLangFull_TTS = langMap[outputLang] || outputLang;
-
-      // Translate and speak
-      translator.translateText(transcribedText, inputLang, outputLang).then((translatedText) => {
-        // Add both input and output to transcription list
-        addToTranscriptionList(transcribedText, translatedText);
-
-        // Get selected voice name
-        const selectedVoiceName = voiceSelect.value;
-
-        playSpeechWithVoice(
-          translatedText,
-          () => {
-            console.log("✓ Translation and speech complete");
-            // Reset auto-start flag when transcription is complete
-            isAutoStartRecording = false;
-            console.log("✓ Auto-start flag reset, ready for next detection");
-          },
-          outputLangFull_TTS,
-          selectedVoiceName
-        );
-      });
+    if (!transcribedText) {
+      throw new Error("No text transcribed");
     }
-  }, inputLangFull);
+
+    console.log("Text captured:", transcribedText);
+
+    // Get output language
+    const outputLang = outputLangSelect.value;
+
+    const outputLangFull_TTS = LANG_MAP[outputLang] || outputLang;
+
+    // Translate
+    const translatedText = await translator.translateText(transcribedText, inputLang, outputLang);
+
+    // Add both input and output to transcription list
+    addToTranscriptionList(transcribedText, translatedText);
+
+    // Get selected voice name
+    const selectedVoiceName = voiceSelect.value;
+
+    // Play speech and wait for completion
+    await playSpeechWithVoice(translatedText, outputLangFull_TTS, selectedVoiceName);
+
+    console.log("✓ Translation and speech complete");
+    // Reset auto-start flag when transcription is complete
+    isAutoStartRecording = false;
+    console.log("✓ Auto-start flag reset, ready for next detection");
+  } catch (error) {
+    console.error("Error during transcription:", error);
+    isAutoStartRecording = false;
+  }
 }
 
 function handleStopRecording() {
@@ -175,85 +202,62 @@ voiceSelect.addEventListener("change", () => {
 
   if (!selectedVoiceName) return;
 
-  // Map language to test phrase
-  const testPhrases = {
-    vi: "Xin chào",
-    en: "Hello",
-    zh: "你好",
-    ja: "こんにちは",
-    ko: "안녕하세요",
-    th: "สวัสดี",
-  };
-
-  const testPhrase = testPhrases[outputLang] || "Hello";
-
-  // Map to full locale code for TTS
-  const langMap = {
-    vi: "vi-VN",
-    en: "en-US",
-    zh: "zh-CN",
-    ja: "ja-JP",
-    ko: "ko-KR",
-    th: "th-TH",
-  };
-  const outputLangFull = langMap[outputLang] || outputLang;
+  const testPhrase = TEST_PHRASES[outputLang] || "Hello";
+  const outputLangFull = LANG_MAP[outputLang] || outputLang;
 
   // Play test voice
-  playSpeechWithVoice(
-    testPhrase,
-    () => {
+  (async () => {
+    try {
+      await playSpeechWithVoice(testPhrase, outputLangFull, selectedVoiceName);
       console.log("✓ Voice test complete");
-    },
-    outputLangFull,
-    selectedVoiceName
-  );
+    } catch (error) {
+      console.error("Error playing test voice:", error);
+    }
+  })();
 });
 
 // Request permission and load devices automatically when page loads
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    // Initialize audio recorder and get mic devices
-    const result = await audioRecorder.initializeAudio();
+    // Initialize Mic Signal Detector (includes audio setup)
+    micSignalDetector = new MicSignalDetector({
+      signalThreshold: 15,
+      debounceMs: 2000,
+    });
 
-    if (result && result.audioInputs) {
-      console.log("✓ Audio recorder initialized with", result.audioInputs.length, "devices");
+    // Share status callback
+    micSignalDetector.onStatusChanged = onStatusChanged;
 
-      // Initialize Mic Signal Detector with audio recorder's analyser
-      micSignalDetector = new MicSignalDetector(audioRecorder.analyser, {
-        signalThreshold: 15,
-        debounceMs: 2000,
-      });
-
-      // Setup callbacks for UI updates
-      micSignalDetector.onSignalStateChanged = (state) => {
-        if (state.hasSignal) {
-          micStatusEl.textContent = "ON";
-          micStatusEl.style.color = "#51cf66";
-
-          // Auto-start recording when mic detects signal
-          if (autoStartEnabled && !isAutoStartRecording && !transcriber.isTranscribing) {
-            console.log("🎤 Mic detected! Auto-starting recording...");
-            isAutoStartRecording = true;
-            handleStartRecording();
-          }
-        } else {
-          micStatusEl.textContent = "OFF";
-          micStatusEl.style.color = "#ff6b6b";
-
-          // Just track mic status, don't auto-stop
-          // Let speech recognition handle stopping on its own
-        }
-      };
-
-      micSignalDetector.onAudioLevelChanged = (level) => {
-        audioLevelBar.style.width = level + "%";
-        audioLevelText.textContent = level;
-      };
-
-      // Start monitoring mic signal
-      micSignalDetector.startMonitoring();
-      console.log("✓ Mic signal detector started");
+    // Initialize audio
+    const initialized = await micSignalDetector.initialize();
+    if (!initialized) {
+      throw new Error("Failed to initialize microphone");
     }
+
+    console.log("✓ Mic signal detector initialized");
+
+    // Setup callbacks for UI updates
+    micSignalDetector.onSignalStateChanged = (state) => {
+      if (state.hasSignal) {
+        micStatusEl.textContent = "ON";
+        micStatusEl.style.color = "#51cf66";
+
+        // Trigger auto-start recording
+        triggerAutoStart();
+      } else {
+        micStatusEl.textContent = "OFF";
+        micStatusEl.style.color = "#ff6b6b";
+      }
+    };
+
+    micSignalDetector.onAudioLevelChanged = (level) => {
+      audioLevelBar.style.width = level + "%";
+      audioLevelText.textContent = level;
+    };
+
+    // Start monitoring mic signal
+    micSignalDetector.startMonitoring();
+    console.log("✓ Mic signal detector started");
 
     // Request microphone permission once for Vietnamese transcriber
     await transcriber.requestPermissionOnce();
@@ -280,16 +284,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 function populateVoiceDropdown() {
   const outputLang = outputLangSelect.value; // Get short code: vi, en, zh, etc.
 
-  // Map to full locale code
-  const langMap = {
-    vi: "vi-VN",
-    en: "en-US",
-    zh: "zh-CN",
-    ja: "ja-JP",
-    ko: "ko-KR",
-    th: "th-TH",
-  };
-  const fullLang = langMap[outputLang] || outputLang;
+  const fullLang = LANG_MAP[outputLang] || outputLang;
 
   // Get voices for selected language
   const voicesByLanguage = translator.getVoicesByLanguage(fullLang);
@@ -315,63 +310,67 @@ function populateVoiceDropdown() {
 }
 
 /**
- * Play speech with a specific voice name
+ * Play speech with a specific voice name - returns a Promise that resolves when playback completes
  */
-function playSpeechWithVoice(text, onComplete, language, voiceName) {
-  try {
-    if (!text || text.trim() === "") {
-      throw new Error("No text to speak");
+function playSpeechWithVoice(text, language, voiceName) {
+  return new Promise((resolve, reject) => {
+    try {
+      if (!text || text.trim() === "") {
+        throw new Error("No text to speak");
+      }
+
+      onStatusChanged("Playing audio...", "active");
+
+      const synthesis = window.speechSynthesis;
+
+      // Cancel any ongoing speech
+      if (synthesis.speaking) {
+        synthesis.cancel();
+      }
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = language;
+      utterance.rate = 0.9;
+      utterance.pitch = 1;
+      utterance.volume = 1;
+
+      // Find voice by name
+      const voices = synthesis.getVoices();
+      let selectedVoice = voices.find((voice) => voice.name === voiceName);
+
+      // Fallback to any voice for the language if not found
+      if (!selectedVoice) {
+        selectedVoice = voices.find((voice) => voice.lang === language);
+      }
+
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+        console.log("🎤 Using voice:", selectedVoice.name);
+      }
+
+      utterance.onstart = () => {
+        console.log("🔊 Playing speech...");
+      };
+
+      utterance.onend = () => {
+        console.log("✓ Playback complete");
+        onStatusChanged("Playback complete", "success");
+        resolve();
+      };
+
+      utterance.onerror = (event) => {
+        console.error("❌ Speech synthesis error:", event.error);
+        onStatusChanged("Speech error: " + event.error, "error");
+        reject(new Error("Speech synthesis error: " + event.error));
+      };
+
+      synthesis.speak(utterance);
+    } catch (error) {
+      console.error("❌ Speech synthesis error:", error);
+      onStatusChanged("Error: " + error.message, "error");
+      reject(error);
     }
-
-    onStatusChanged("Playing audio...", "active");
-
-    const synthesis = window.speechSynthesis;
-
-    // Cancel any ongoing speech
-    if (synthesis.speaking) {
-      synthesis.cancel();
-    }
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = language;
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-
-    // Find voice by name
-    const voices = synthesis.getVoices();
-    let selectedVoice = voices.find((voice) => voice.name === voiceName);
-
-    // Fallback to any voice for the language if not found
-    if (!selectedVoice) {
-      selectedVoice = voices.find((voice) => voice.lang === language);
-    }
-
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-      console.log("🎤 Using voice:", selectedVoice.name);
-    }
-
-    utterance.onstart = () => {
-      console.log("🔊 Playing speech...");
-    };
-
-    utterance.onend = () => {
-      console.log("✓ Playback complete");
-      onStatusChanged("Playback complete", "success");
-      onComplete?.();
-    };
-
-    utterance.onerror = (event) => {
-      console.error("❌ Speech synthesis error:", event.error);
-      onStatusChanged("Speech error: " + event.error, "error");
-    };
-
-    synthesis.speak(utterance);
-  } catch (error) {
-    console.error("❌ Speech synthesis error:", error);
-    onStatusChanged("Error: " + error.message, "error");
-  }
+  });
 }
 
 // ============================================
@@ -468,16 +467,7 @@ function displayVoicesByLanguage() {
   const voiceList = document.getElementById("voiceList");
   const outputLang = outputLangSelect.value; // Get short code: vi, en, zh, etc.
 
-  // Map to full locale code
-  const langMap = {
-    vi: "vi-VN",
-    en: "en-US",
-    zh: "zh-CN",
-    ja: "ja-JP",
-    ko: "ko-KR",
-    th: "th-TH",
-  };
-  const fullLang = langMap[outputLang] || outputLang;
+  const fullLang = LANG_MAP[outputLang] || outputLang;
 
   // Get voices for selected language
   const voicesByLanguage = translator.getVoicesByLanguage(fullLang);
