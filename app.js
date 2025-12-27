@@ -4,6 +4,18 @@
 const translator = new TranslationService();
 const transcriber = new SpeechTranscriber();
 
+// Update info in UI
+if (typeof INFO !== "undefined" && document.getElementById("versionText")) {
+  document.getElementById("versionText").textContent = `Demo product by ${INFO.author} - version ${INFO.version}`;
+
+  // Update email link
+  const emailLink = document.getElementById("emailLink");
+  if (emailLink) {
+    emailLink.href = `mailto:${INFO.email}`;
+    emailLink.textContent = INFO.email;
+  }
+}
+
 // DOM Elements
 const inputLangSelect = document.getElementById("inputLang");
 const outputLangSelect = document.getElementById("outputLang");
@@ -97,7 +109,7 @@ async function triggerAutoStart() {
 
 async function handleStartRecording() {
   console.log("📍 Starting mic capture from app.js");
-
+  console.log("Auto-start recording flag:", transcriber.isTranscribing);
   // Make sure transcriber is ready
   if (transcriber.isTranscribing) {
     console.warn("⚠️ Transcriber already transcribing, stopping first...");
@@ -159,7 +171,7 @@ function toggleAutoStart() {
   const autoStartBtn = document.getElementById("autoStartBtn");
   if (autoStartBtn) {
     autoStartBtn.style.background = autoStartEnabled ? "#51cf66" : "#ccc";
-    autoStartBtn.textContent = autoStartEnabled ? "🔄 Auto-Start: ON" : "⏹ Auto-Start: OFF";
+    autoStartBtn.textContent = autoStartEnabled ? "Auto-Start: ON" : "Auto-Start: OFF";
   }
   console.log("Auto-start recording:", autoStartEnabled ? "ENABLED" : "DISABLED");
   onStatusChanged(`Auto-start ${autoStartEnabled ? "enabled" : "disabled"}`, "active");
@@ -296,10 +308,10 @@ function populateVoiceDropdown() {
     voiceSelect.innerHTML = `<option value="">No voices available for ${fullLang}</option>`;
   } else {
     voicesByLanguage.forEach((voice) => {
-      const genderEmoji = voice.gender === "female" ? "👩" : voice.gender === "male" ? "👨" : "❓";
       const option = document.createElement("option");
       option.value = voice.name;
-      option.textContent = `${genderEmoji} ${voice.name}`;
+      option.textContent = `🎤 ${voice.name}`;
+
       voiceSelect.appendChild(option);
     });
   }
@@ -374,9 +386,17 @@ function playSpeechWithVoice(text, language, voiceName) {
   });
 }
 
-// ============================================
-// Visualizer Drawing Function
-// ============================================
+/**
+ * Toggle What's New modal display
+ */
+function toggleWhatsNew() {
+  const modal = document.querySelector("whats-new-modal");
+  if (modal) {
+    modal.toggle();
+  } else {
+    console.warn("⚠️ What's New modal not found");
+  }
+}
 
 function drawVisualizer(canvas, dataArray) {
   const ctx = canvas.getContext("2d");
@@ -442,57 +462,6 @@ function drawVisualizer(canvas, dataArray) {
   }
 
   ctx.globalAlpha = 1;
-}
-
-/**
- * Toggle voice list display
- */
-function toggleVoiceList() {
-  const container = document.getElementById("voiceListContainer");
-  const voiceList = document.getElementById("voiceList");
-
-  if (container.style.display === "none") {
-    // Show the list
-    container.style.display = "block";
-    displayVoicesByLanguage();
-  } else {
-    // Hide the list
-    container.style.display = "none";
-  }
-}
-
-/**
- * Display voices for the selected output language
- */
-function displayVoicesByLanguage() {
-  const voiceList = document.getElementById("voiceList");
-  const outputLang = outputLangSelect.value; // Get short code: vi, en, zh, etc.
-
-  const fullLang = LANG_MAP[outputLang] || outputLang;
-
-  // Get voices for selected language
-  const voicesByLanguage = translator.getVoicesByLanguage(fullLang);
-  console.log(`Voices for ${fullLang}:`, voicesByLanguage);
-
-  // Build HTML
-
-  let html = `<strong style="color: #667eea; display: block; margin-bottom: 10px;">Voices for: ${fullLang}</strong>`;
-
-  if (voicesByLanguage.length === 0) {
-    html += `<span style="color: #999;">❌ No voices available for ${fullLang}</span>`;
-  } else {
-    voicesByLanguage.forEach((voice, index) => {
-      const genderEmoji = voice.gender === "female" ? "👩" : voice.gender === "male" ? "👨" : "❓";
-      const genderColor = voice.gender === "female" ? "#ff69b4" : voice.gender === "male" ? "#4169e1" : "#999";
-
-      html += `<div style="margin-bottom: 8px; padding: 8px; background: white; border-radius: 4px; border-left: 3px solid ${genderColor};">`;
-      html += `<span style="color: ${genderColor}; font-weight: 500;">${genderEmoji} ${voice.gender.toUpperCase()}</span><br>`;
-      html += `<span style="color: #555;">${voice.name}</span>`;
-      html += `</div>`;
-    });
-  }
-
-  voiceList.innerHTML = html;
 }
 
 // ============================================

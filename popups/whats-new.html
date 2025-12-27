@@ -1,0 +1,103 @@
+<!-- What's New Modal -->
+<script src="../version.js"></script>
+<div id="whatsNewModal"
+    style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 999; justify-content: center; align-items: center;">
+    <div
+        style="background: white; border-radius: 15px; padding: 30px; max-width: 500px; width: 90%; max-height: 70vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: #333; margin: 0;">✨ What's New</h2>
+            <button onclick="toggleWhatsNew()"
+                style="background: #ff6b6b; color: white; border: none; border-radius: 50%; width: 32px; height: 32px; font-size: 18px; cursor: pointer;">×</button>
+        </div>
+        <div id="whatsNewContent" style="color: #555; line-height: 1.6; font-size: 14px;">
+            <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px;">Loading...</h3>
+            <p style="color: #999;">Initializing content...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    /**
+     * Populate What's New content from version.js
+     */
+    function populateWhatsNewContent() {
+        console.log("📍 Populating What's New content...");
+        console.log("VERSION:", typeof VERSION !== "undefined" ? VERSION : "undefined");
+        console.log("WHATS_NEW:", typeof WHATS_NEW !== "undefined" ? WHATS_NEW : "undefined");
+
+        const content = document.getElementById("whatsNewContent");
+        if (!content) {
+            console.error("❌ whatsNewContent element not found!");
+            return;
+        }
+
+        const version = typeof VERSION !== "undefined" ? VERSION : "1.0.0";
+        const whatsNew = typeof WHATS_NEW !== "undefined" ? WHATS_NEW : "";
+
+        // Parse what's new items (split by newline and filter empty lines)
+        const whatsNewItems = whatsNew
+            .split("\n")
+            .map((item) => item.trim())
+            .filter((item) => item.length > 0 && item.startsWith("-"))
+            .map((item) => item.replace(/^-\s*/, ""));
+
+        let html = `
+      <h3 style="color: #667eea; margin-top: 0; margin-bottom: 15px;">Version ${version}</h3>
+      
+      <div style="margin-bottom: 20px;">
+        <h4 style="color: #333; margin-bottom: 8px;">✨ What's New:</h4>
+        <ul style="margin: 0; padding-left: 20px;">
+    `;
+
+        // Add what's new items
+        whatsNewItems.forEach((item) => {
+            html += `<li style="margin-bottom: 8px;">${item}</li>`;
+        });
+
+        html += `
+        </ul>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <h4 style="color: #333; margin-bottom: 8px;">🎙️ Features:</h4>
+        <ul style="margin: 0; padding-left: 20px;">
+          <li style="margin-bottom: 8px;">Real-time speech recognition with microphone detection</li>
+          <li style="margin-bottom: 8px;">Multi-language support (Vietnamese, English, Chinese, Japanese, Korean, Thai)</li>
+          <li style="margin-bottom: 8px;">Automatic translation using Google Translate API</li>
+          <li style="margin-bottom: 8px;">Text-to-speech with voice selection</li>
+          <li style="margin-bottom: 8px;">Audio level visualization</li>
+          <li style="margin-bottom: 8px;">Auto-start recording on mic detection</li>
+          <li style="margin-bottom: 8px;">Transcription history tracking</li>
+        </ul>
+      </div>
+
+      <div style="padding: 12px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #2196f3;">
+        <p style="margin: 0; font-size: 12px; color: #1565c0;">
+          💡 Tip: Enable "Auto-Start" to automatically record when the app detects microphone signal.
+        </p>
+      </div>
+    `;
+
+        content.innerHTML = html;
+    }
+
+    // Close modal when clicking outside
+    document.addEventListener("DOMContentLoaded", () => {
+        console.log("📍 Setting up modal click outside handler...");
+        const modal = document.getElementById("whatsNewModal");
+        if (modal) {
+            modal.addEventListener("click", (e) => {
+                if (e.target === modal) {
+                    modal.style.display = "none";
+                }
+            });
+        }
+    });
+
+    // Populate content on modal load
+    console.log("⏳ Scheduling populateWhatsNewContent in 500ms...");
+    setTimeout(() => {
+        console.log("🔄 Calling populateWhatsNewContent...");
+        populateWhatsNewContent();
+    }, 500);
+</script>

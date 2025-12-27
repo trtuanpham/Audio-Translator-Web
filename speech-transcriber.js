@@ -69,7 +69,7 @@ class SpeechTranscriber {
       recognition.onstart = () => {
         this.permissionGranted = true; // Permission granted once started
         if (this.isTranscribing) {
-          this.onStatusChanged?.("🎤 Listening...", "active");
+          this.onStatusChanged?.("Listening...", "active");
         }
         console.log("🎤 Speech transcription started");
         currentTranscript = "";

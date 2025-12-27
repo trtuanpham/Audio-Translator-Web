@@ -75,22 +75,14 @@ class TranslationService {
   getVoicesByLanguage(language) {
     const synthesis = window.speechSynthesis;
     const voices = synthesis.getVoices();
-
     const filtered = voices.filter((voice) => voice.lang === language);
 
     console.log(`=== VOICES FOR ${language} ===`);
     console.log(`Found ${filtered.length} voice(s)\n`);
 
-    filtered.forEach((voice, index) => {
-      console.log(`${index + 1}. ${voice.name}`);
-      console.log(`   Gender: ${voice.name.toLowerCase().includes("female") ? "Female" : voice.name.toLowerCase().includes("male") ? "Male" : "Unknown"}`);
-      console.log("");
-    });
-
     return filtered.map((voice) => ({
       name: voice.name,
       lang: voice.lang,
-      gender: voice.name.toLowerCase().includes("female") ? "female" : voice.name.toLowerCase().includes("male") ? "male" : "unknown",
     }));
   }
 }
