@@ -12,8 +12,8 @@ class MicSignalDetector {
 
     // Configurable options
     this.SIGNAL_THRESHOLD = options.signalThreshold || 25; // Higher threshold (less sensitive)
-    this.SIGNAL_OFF_DEBOUNCE_MS = options.debounceMs || 1000; // 2 seconds debounce
-    this.SIGNAL_ON_CONFIRM_MS = options.confirmMs || 300; // 300ms to confirm signal is real
+    this.SIGNAL_OFF_DEBOUNCE_MS = options.debounceMs || 3000; // 3 seconds before can detect again
+    this.SIGNAL_ON_CONFIRM_MS = options.confirmMs || 0; // Trigger ON immediately
 
     // Callback for signal state changes
     this.onSignalStateChanged = null;
@@ -86,14 +86,14 @@ class MicSignalDetector {
     // 2. Mid-frequency ratio suggests speech (not just noise)
     let hasSignal = this.audioLevel > this.SIGNAL_THRESHOLD && midFreqRatio > 0.3;
 
-    // If potential signal detected - wait 300ms to confirm it's real (not a click)
+    // If potential signal detected - trigger ON immediately (0ms confirmation)
     if (hasSignal && !this.lastHasSignal) {
       if (this.signalOnTimestamp === null) {
         this.signalOnTimestamp = Date.now();
       }
 
       const timeSinceOnStart = Date.now() - this.signalOnTimestamp;
-      // Only trigger ON after 300ms of continuous signal
+      // Trigger ON immediately (no delay)
       if (timeSinceOnStart >= this.SIGNAL_ON_CONFIRM_MS) {
         this.lastHasSignal = true;
         this.signalOffTimestamp = null;
@@ -105,16 +105,17 @@ class MicSignalDetector {
         });
       }
     }
-    // If signal lost - require 2 seconds confirmation before reporting as off
+    // If signal lost - require 3 seconds before allowing detection again
     else if (!hasSignal && this.lastHasSignal) {
       if (this.signalOffTimestamp === null) {
         this.signalOffTimestamp = Date.now();
       }
 
-      // Only confirm off after 2 seconds of no signal
+      // Only confirm off after 3 seconds of no signal
       const timeSinceSignalLost = Date.now() - this.signalOffTimestamp;
       if (timeSinceSignalLost >= this.SIGNAL_OFF_DEBOUNCE_MS) {
         this.lastHasSignal = false;
+        this.signalOffTimestamp = null; // Reset for next cycle
         this.onSignalStateChanged?.({
           hasSignal: false,
           audioLevel: this.audioLevel,
