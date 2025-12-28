@@ -82,6 +82,7 @@ class SpeechTranscriber {
       };
 
       recognition.onend = () => {
+        console.log("🎤 Speech transcription ended");
         if (!this.isTranscribing) {
           return;
         }
@@ -151,6 +152,10 @@ class SpeechTranscriber {
         this.currentReject = reject;
         this.currentCallback = null; // Clear any old callback
         this.isTranscribing = true;
+        // reset current transcript
+        if (this.recognition) {
+          this.recognition.abort();
+        }
         this.recognition.start();
         this.onStatusChanged?.("Recording audio...", "active");
       } catch (error) {
