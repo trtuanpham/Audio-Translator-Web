@@ -82,7 +82,7 @@ class SpeechTranscriber {
       };
 
       recognition.onend = () => {
-        console.log("🎤 Speech transcription ended");
+        console.log("🎤 Speech transcription ended:", currentTranscript);
         if (!this.isTranscribing) {
           return;
         }
@@ -116,13 +116,6 @@ class SpeechTranscriber {
         this.isTranscribing = false;
         console.error("❌ Transcription error:", event.error);
         this.onStatusChanged?.("Error: " + event.error, "error");
-
-        // Reject Promise if exists
-        if (this.currentReject) {
-          this.currentReject(new Error("Transcription error: " + event.error));
-          this.currentResolve = null;
-          this.currentReject = null;
-        }
       };
 
       return recognition;

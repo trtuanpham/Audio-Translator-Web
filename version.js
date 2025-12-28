@@ -2,7 +2,7 @@
  * Application Info Configuration
  */
 window.INFO = {
-  version: "1.0.5",
+  version: "1.0.6",
   author: "Tuan Pham",
   email: "tr.tuanpham@gmail.com",
   whatsNew: `
