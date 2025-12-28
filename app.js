@@ -220,7 +220,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Initialize Mic Signal Detector (includes audio setup)
     micSignalDetector = new MicSignalDetector({
       signalThreshold: 15,
-      debounceMs: 1000,
+      debounceMs: 200,
     });
 
     // Share status callback
