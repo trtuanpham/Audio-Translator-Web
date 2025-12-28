@@ -179,7 +179,6 @@ class SpeechTranscriber {
    */
   stop() {
     if (this.recognition) {
-      console.log("📍 Stopping transcription...", this.isTranscribing);
       this.isTranscribing = false;
       this.recognition.stop();
       this.onStatusChanged?.("Transcription stopped", "active");

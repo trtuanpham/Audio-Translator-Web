@@ -36,7 +36,6 @@ let micSignalDetector = null;
 
 // Auto-start recording feature
 let autoStartEnabled = true; // Toggle for auto-start on mic detection
-let isAutoStartRecording = false; // Track if recording was auto-started
 
 // Make translator and transcriber global for onclick handlers
 window.translator = translator;
@@ -102,20 +101,12 @@ function addToTranscriptionList(inputText, outputText) {
 async function triggerAutoStart() {
   if (autoStartEnabled && !transcriber.isTranscribing) {
     console.log("🎤 Mic detected! Auto-starting recording...");
-    isAutoStartRecording = true;
     await handleStartRecording();
   }
 }
 
 async function handleStartRecording() {
   console.log("📍 Starting mic capture from app.js");
-  console.log("Auto-start recording flag:", transcriber.isTranscribing);
-  // Make sure transcriber is ready
-  if (transcriber.isTranscribing) {
-    console.warn("⚠️ Transcriber already transcribing, stopping first...");
-    transcriber.stop();
-    return;
-  }
 
   const inputLangFull = inputLangSelect.value; // vi-VN, en-US, etc
   const inputLang = inputLangFull.split("-")[0]; // vi, en, zh, etc
@@ -148,19 +139,14 @@ async function handleStartRecording() {
     await playSpeechWithVoice(translatedText, outputLangFull_TTS, selectedVoiceName);
 
     console.log("✓ Translation and speech complete");
-    // Reset auto-start flag when transcription is complete
-    isAutoStartRecording = false;
-    console.log("✓ Auto-start flag reset, ready for next detection");
   } catch (error) {
     console.error("Error during transcription:", error);
-    isAutoStartRecording = false;
   }
 }
 
 function handleStopRecording() {
   console.log("📍 Stopping mic capture from app.js");
   transcriber.stop();
-  isAutoStartRecording = false; // Reset auto-start flag
 }
 
 /**
@@ -234,7 +220,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Initialize Mic Signal Detector (includes audio setup)
     micSignalDetector = new MicSignalDetector({
       signalThreshold: 15,
-      debounceMs: 2000,
+      debounceMs: 1000,
     });
 
     // Share status callback
