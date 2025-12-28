@@ -502,14 +502,15 @@ function cleanupResources() {
 // Cleanup on page unload
 window.addEventListener("beforeunload", cleanupResources);
 window.addEventListener("unload", cleanupResources);
-// Also cleanup on page hide (for PWAs and tab switches)
+// Keep monitoring active when tab is hidden (like Google Meeting)
 if (document.hidden !== undefined) {
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
-      console.log("Page hidden, pausing monitoring...");
-      if (micSignalDetector) {
-        micSignalDetector.stopMonitoring();
-      }
+      console.log("Page hidden, but keeping mic monitoring active...");
+      // Don't stop monitoring - keep it active in background
+    } else {
+      console.log("Page visible again, mic monitoring continues...");
+      // Mic monitoring never stopped, so nothing to restart
     }
   });
 }
