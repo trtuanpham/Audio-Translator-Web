@@ -2,13 +2,15 @@
  * Application Info Configuration
  */
 window.INFO = {
-  version: "1.0.2",
+  version: "1.0.3",
   author: "Tuan Pham",
   email: "tr.tuanpham@gmail.com",
   whatsNew: `
 - Improved transcription accuracy.
 - Enhanced UI responsiveness.
 - Fixed minor bugs in translation module.
+- Added support for additional languages.
+- Fix minize issue on some browsers.
   `,
 };
 

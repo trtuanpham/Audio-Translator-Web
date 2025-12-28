@@ -27,6 +27,7 @@ class MicSignalDetector {
 
     this.isMonitoring = false;
     this.animationId = null;
+    this.intervalId = null; // Use setInterval instead of requestAnimationFrame for background monitoring
   }
 
   /**
@@ -87,6 +88,10 @@ class MicSignalDetector {
     if (this.animationId) {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
+    }
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
     }
   }
 
@@ -184,7 +189,15 @@ class MicSignalDetector {
       this.signalOnTimestamp = null;
     }
 
-    this.animationId = requestAnimationFrame(() => this._monitor());
+    // Use setInterval for background monitoring (works when window is minimized)
+    // This is how Google Meet keeps audio working in background
+    if (!this.intervalId) {
+      this.intervalId = setInterval(() => {
+        if (this.isMonitoring) {
+          this._monitor();
+        }
+      }, 100); // Check every 100ms (10 times per second)
+    }
   }
 
   /**
