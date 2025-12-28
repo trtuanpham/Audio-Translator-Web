@@ -83,14 +83,6 @@ class SpeechTranscriber {
 
       recognition.onend = () => {
         console.log("🎤 Speech transcription ended:", currentTranscript);
-        if (!this.isTranscribing) {
-          return;
-        }
-
-        if (currentTranscript.trim() === "") {
-          return;
-        }
-
         console.log("✓ Transcribed text:", currentTranscript);
         this.onStatusChanged?.("Transcription complete", "success");
 
