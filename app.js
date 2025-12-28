@@ -219,7 +219,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     // Initialize Mic Signal Detector (includes audio setup)
     micSignalDetector = new MicSignalDetector({
-      signalThreshold: 30,
+      signalThreshold: 15,
       debounceMs: 1000,
     });
 
