@@ -86,22 +86,31 @@ class SpeechTranscriber {
         console.log("✓ Transcribed text:", currentTranscript);
         this.onStatusChanged?.("Transcription complete", "success");
 
+        if (currentTranscript.trim().length === 0) {
+          this.isTranscribing = false;
+          console.warn("⚠️ No speech detected");
+          this.onStatusChanged?.("No speech detected", "info");
+          this.currentReject?.(new Error("No speech detected"));
+          this.currentReject = null;
+          this.currentResolve = null;
+          return;
+        }
+
         // Call callback if exists (for backward compatibility)
         if (this.currentCallback) {
           this.currentCallback(currentTranscript);
-          this.currentCallback = null;
         }
 
         // Resolve Promise if exists
         if (this.currentResolve) {
           this.currentResolve(currentTranscript);
-          this.currentResolve = null;
-          this.currentReject = null;
         }
 
         // Reset for next use
         currentTranscript = "";
         this.isTranscribing = false;
+        this.currentResolve = null;
+        this.currentReject = null;
       };
 
       recognition.onerror = (event) => {
