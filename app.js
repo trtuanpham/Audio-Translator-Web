@@ -37,6 +37,9 @@ let micSignalDetector = null;
 // Auto-start recording feature
 let autoStartEnabled = true; // Toggle for auto-start on mic detection
 
+// Electron global hotkey state
+let isHotKeyRecording = false;
+
 // Make translator and transcriber global for onclick handlers
 window.translator = translator;
 window.transcriber = transcriber;
@@ -488,6 +491,61 @@ function cleanupResources() {
 // Cleanup on page unload
 window.addEventListener("beforeunload", cleanupResources);
 window.addEventListener("unload", cleanupResources);
+
+// ============================================
+// Electron Global Hotkey Handler
+// ============================================
+
+if (window.electronAPI) {
+  console.log("✓ Electron API detected - global hotkeys enabled (G key)");
+
+  window.electronAPI.onHotkey((data) => {
+    console.log(`🎤 Hotkey event: ${data.key} ${data.action}`);
+
+    if (data.action === "toggle") {
+      // G key = toggle start/stop
+      if (transcriber.isTranscribing) {
+        console.log("🎤 G - Stopping recording");
+        handleStopRecording();
+      } else {
+        console.log("🎤 G - Starting recording");
+        handleStartRecording();
+      }
+    }
+  });
+} else {
+  console.log("ℹ️ Running in browser mode (no Electron API)");
+}
+
+// Fallback: Keyboard events for browser (G key)
+document.addEventListener("keydown", (e) => {
+  if (e.key === "g" || e.key === "G") {
+    if (!window.electronAPI) {
+      // Only if NOT using Electron
+      e.preventDefault();
+      if (!transcriber.isTranscribing && !isHotKeyRecording) {
+        console.log("🎤 G DOWN (Browser) - Starting recording");
+        isHotKeyRecording = true;
+        handleStartRecording();
+      }
+    }
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  if (e.key === "g" || e.key === "G") {
+    if (!window.electronAPI) {
+      // Only if NOT using Electron
+      e.preventDefault();
+      if (isHotKeyRecording) {
+        console.log("🎤 G UP (Browser) - Stopping recording");
+        isHotKeyRecording = false;
+        handleStopRecording();
+      }
+    }
+  }
+});
+
 // Keep monitoring active when tab is hidden (like Google Meeting)
 if (document.hidden !== undefined) {
   document.addEventListener("visibilitychange", () => {
