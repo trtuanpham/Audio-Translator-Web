@@ -116,7 +116,15 @@ class SpeechTranscriber {
       recognition.onerror = (event) => {
         this.isTranscribing = false;
         console.error("❌ Transcription error:", event.error);
-        this.onStatusChanged?.("Error: " + event.error, "error");
+
+        if (event.error === "network") {
+          console.warn("⚠️ Network error - offering manual input fallback");
+          this.onStatusChanged?.("Network error - use manual input", "error");
+          this.currentReject?.(new Error("network_error"));
+        } else {
+          this.onStatusChanged?.("Error: " + event.error, "error");
+          this.currentReject?.(new Error(event.error));
+        }
       };
 
       return recognition;

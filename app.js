@@ -44,6 +44,422 @@ let isHotKeyRecording = false;
 window.translator = translator;
 window.transcriber = transcriber;
 
+/**
+ * Test network connectivity to Google
+ */
+async function testNetworkConnection() {
+  console.log("🔍 Testing network connection to Google...");
+  onStatusChanged("Testing network...", "active");
+
+  try {
+    const response = await fetch("https://www.google.com", {
+      method: "HEAD",
+      mode: "no-cors",
+    });
+    console.log("✓ Network test successful! Google is reachable.");
+    onStatusChanged("Network OK - Google reachable ✓", "success");
+    return true;
+  } catch (error) {
+    console.error("❌ Network test failed:", error);
+    onStatusChanged("Network FAILED - No internet ✗", "error");
+    return false;
+  }
+}
+
+/**
+ * Comprehensive network diagnostics
+ */
+async function testNetworkDiagnostics() {
+  console.log("\n🔍 === COMPREHENSIVE NETWORK DIAGNOSTICS ===\n");
+  onStatusChanged("Running network diagnostics...", "active");
+
+  const results = {};
+
+  // Test 1: Basic connectivity
+  console.log("1️⃣  Testing basic internet connectivity...");
+  try {
+    const response = await fetch("https://www.google.com", {
+      method: "HEAD",
+      mode: "no-cors",
+    });
+    results.basicConnectivity = true;
+    console.log("   ✓ Basic connectivity OK");
+  } catch (err) {
+    results.basicConnectivity = false;
+    console.error("   ❌ Basic connectivity FAILED:", err.message);
+  }
+
+  // Test 2: Google Speech Recognition endpoint
+  console.log("\n2️⃣  Testing Google Speech Recognition endpoint...");
+  try {
+    // Try to fetch from Google's speech API
+    const response = await fetch("https://www.google.com/speech-api/", {
+      method: "GET",
+      mode: "no-cors",
+    });
+    results.googleSpeechAPI = true;
+    console.log("   ✓ Google Speech API endpoint reachable");
+  } catch (err) {
+    results.googleSpeechAPI = false;
+    console.error("   ❌ Google Speech API endpoint FAILED:", err.message);
+  }
+
+  // Test 3: MyMemory Translation API
+  console.log("\n3️⃣  Testing MyMemory Translation API...");
+  try {
+    const response = await fetch("https://api.mymemory.translated.net/get?q=hello&langpair=en|vi", { mode: "cors" });
+    const data = await response.json();
+    results.translationAPI = data.responseStatus === 200;
+    console.log(`   ${results.translationAPI ? "✓" : "❌"} Translation API: ${data.responseStatus}`);
+  } catch (err) {
+    results.translationAPI = false;
+    console.error("   ❌ Translation API FAILED:", err.message);
+  }
+
+  // Test 4: DNS Resolution check
+  console.log("\n4️⃣  Testing DNS resolution...");
+  try {
+    const response = await fetch("https://dns.google/resolve?name=google.com", {
+      mode: "cors",
+    });
+    results.dnsResolution = response.ok;
+    console.log(`   ${results.dnsResolution ? "✓" : "❌"} DNS Resolution OK`);
+  } catch (err) {
+    results.dnsResolution = false;
+    console.error("   ❌ DNS Resolution FAILED:", err.message);
+  }
+
+  // Test 5: HTTPS certificate validation
+  console.log("\n5️⃣  Testing HTTPS connections...");
+  try {
+    const response = await fetch("https://www.google.com", {
+      method: "HEAD",
+      mode: "cors",
+    });
+    results.https = response.ok || response.status === 0; // 0 for no-cors
+    console.log("   ✓ HTTPS connections OK");
+  } catch (err) {
+    results.https = false;
+    console.error("   ❌ HTTPS connections FAILED:", err.message);
+  }
+
+  // Summary
+  console.log("\n📊 === NETWORK DIAGNOSTICS SUMMARY ===");
+  console.log(JSON.stringify(results, null, 2));
+
+  const allPassed = Object.values(results).every((v) => v === true);
+  if (allPassed) {
+    console.log("\n✅ All network tests PASSED! Network should work.");
+    onStatusChanged("✅ Network diagnostics: ALL PASSED", "success");
+  } else {
+    const failed = Object.keys(results).filter((k) => !results[k]);
+    console.error(`\n❌ ${failed.length} test(s) FAILED: ${failed.join(", ")}`);
+    onStatusChanged(`❌ Network issues: ${failed.join(", ")}`, "error");
+  }
+
+  return results;
+}
+
+/**
+ * Test microphone access directly
+ */
+async function testMicrophoneAccess() {
+  console.log("\n🎤 === TESTING MICROPHONE ACCESS ===\n");
+  onStatusChanged("Testing microphone access...", "active");
+
+  try {
+    console.log("1. Requesting microphone permission...");
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+      },
+    });
+
+    console.log("✓ Microphone access GRANTED!");
+    console.log("Stream details:");
+    console.log("  - State:", stream.active ? "ACTIVE" : "INACTIVE");
+    console.log("  - Audio tracks:", stream.getAudioTracks().length);
+
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length > 0) {
+      const track = audioTracks[0];
+      console.log("  - Track enabled:", track.enabled);
+      console.log("  - Track kind:", track.kind);
+      console.log("  - Track readyState:", track.readyState);
+      console.log("  - Track settings:", JSON.stringify(track.getSettings(), null, 2));
+    }
+
+    // Stop stream after test
+    stream.getTracks().forEach((track) => track.stop());
+    console.log("\n✓ Microphone stream stopped");
+
+    onStatusChanged("✓ Microphone access OK", "success");
+    return true;
+  } catch (error) {
+    console.error("❌ Microphone access FAILED:");
+    console.error("  - Error name:", error.name);
+    console.error("  - Error message:", error.message);
+
+    // Provide specific guidance
+    if (error.name === "NotAllowedError") {
+      console.error("  → Microphone permission was DENIED by user");
+      onStatusChanged("❌ Microphone permission denied", "error");
+    } else if (error.name === "NotFoundError") {
+      console.error("  → No microphone device found");
+      onStatusChanged("❌ No microphone device found", "error");
+    } else if (error.name === "SecurityError") {
+      console.error("  → Security error - check HTTPS and CSP");
+      onStatusChanged("❌ Security error - check HTTPS", "error");
+    } else {
+      console.error("  → Unknown error");
+      onStatusChanged("❌ Microphone error: " + error.message, "error");
+    }
+
+    return false;
+  }
+}
+
+/**
+ * Test translation API
+ */
+async function testTranslationAPI() {
+  console.log("🔍 Testing translation API (MyMemory)...");
+  onStatusChanged("Testing translation API...", "active");
+
+  try {
+    const response = await fetch("https://api.mymemory.translated.net/get?q=hello&langpair=en|vi");
+    const data = await response.json();
+
+    if (data.responseStatus === 200) {
+      console.log("✓ Translation API working! Response:", data.responseData.translatedText);
+      onStatusChanged("Translation API OK ✓", "success");
+      return true;
+    } else {
+      console.error("❌ Translation API error:", data.responseDetails);
+      onStatusChanged("Translation API failed ✗", "error");
+      return false;
+    }
+  } catch (error) {
+    console.error("❌ Translation API test failed:", error);
+    onStatusChanged("Translation API test failed ✗", "error");
+    return false;
+  }
+}
+
+/**
+ * Diagnose Speech Recognition issues
+ */
+function diagnoseSpeechRecognition() {
+  console.log("🔍 === SPEECH RECOGNITION DIAGNOSIS ===");
+  onStatusChanged("Diagnosing Speech Recognition...", "active");
+
+  let issues = [];
+  let results = {};
+
+  // 1. Check if SpeechRecognition API is available
+  const hasAPI = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  results.apiAvailable = hasAPI;
+  console.log(`1. Web Speech API available: ${hasAPI ? "✓ YES" : "✗ NO"}`);
+  if (!hasAPI) {
+    issues.push("❌ Web Speech API not available in this browser");
+  }
+
+  // 2. Check if recognition object exists in transcriber
+  const hasRecognition = !!transcriber.recognition;
+  results.recognitionObject = hasRecognition;
+  console.log(`2. Recognition object initialized: ${hasRecognition ? "✓ YES" : "✗ NO"}`);
+  if (!hasRecognition) {
+    issues.push("❌ Speech Recognition object not initialized");
+  }
+
+  // 3. Check internet connection
+  console.log("3. Checking internet connection...");
+  fetch("https://www.google.com", { method: "HEAD", mode: "no-cors" })
+    .then(() => {
+      results.internet = true;
+      console.log("   ✓ Internet connected");
+    })
+    .catch((err) => {
+      results.internet = false;
+      console.log("   ✗ No internet connection:", err.message);
+      issues.push("❌ No internet - Speech Recognition requires internet");
+    });
+
+  // 4. Check microphone permission
+  const hasPermission = transcriber.permissionGranted;
+  results.micPermission = hasPermission;
+  console.log(`4. Microphone permission granted: ${hasPermission ? "✓ YES" : "✗ NO"}`);
+  if (!hasPermission) {
+    issues.push("⚠️ Microphone permission not yet granted");
+  }
+
+  // 5. Check if currently transcribing
+  const isTranscribing = transcriber.isTranscribing;
+  results.isTranscribing = isTranscribing;
+  console.log(`5. Currently transcribing: ${isTranscribing ? "⚠️ YES (busy)" : "✓ NO (available)"}`);
+
+  // 6. Check Electron environment
+  const isElectron = !!window.electronAPI;
+  results.electronEnv = isElectron;
+  console.log(`6. Running in Electron: ${isElectron ? "✓ YES" : "✓ NO (Browser)"}`);
+
+  console.log("\n🔍 === ISSUES FOUND ===");
+  if (issues.length === 0) {
+    console.log("✓ No issues found! Speech Recognition should work.");
+    onStatusChanged("✓ Speech Recognition ready", "success");
+  } else {
+    console.log(`Found ${issues.length} issue(s):`);
+    issues.forEach((issue) => console.log(`  ${issue}`));
+    onStatusChanged(`⚠️ Issues found: ${issues.length}`, "error");
+  }
+
+  console.log("\n📊 Full diagnostic results:", results);
+  return { results, issues };
+}
+
+/**
+ * Test Speech Recognition - Simple direct test
+ */
+function testSpeechRecognitionSimple() {
+  console.log("\n🎤 === SIMPLE SPEECH RECOGNITION TEST ===\n");
+  onStatusChanged("Simple speech test...", "active");
+
+  try {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "vi-VN";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    let isRunning = false;
+    let results = [];
+
+    recognition.onstart = () => {
+      isRunning = true;
+      console.log("✓ 🎤 Microphone started");
+      onStatusChanged("🎤 Listening...", "active");
+    };
+
+    recognition.onresult = (event) => {
+      console.log("✓ EVENT: onresult");
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        const isFinal = event.results[i].isFinal;
+        console.log(`  Transcript: "${transcript}" (final: ${isFinal})`);
+        if (isFinal) {
+          results.push(transcript);
+        }
+      }
+    };
+
+    recognition.onend = () => {
+      isRunning = false;
+      console.log("✓ 🛑 Microphone ended");
+      console.log(`Final results: ${results.join(" ")}`);
+      if (results.length > 0) {
+        onStatusChanged(`✓ Speech recognized: "${results.join(" ")}"`, "success");
+      } else {
+        onStatusChanged("⚠️ No speech detected", "info");
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error("❌ SPEECH ERROR:", event.error);
+      onStatusChanged(`❌ Speech error: ${event.error}`, "error");
+    };
+
+    console.log("📍 Starting simple speech recognition...");
+    recognition.start();
+
+    // Auto-stop after 5 seconds
+    setTimeout(() => {
+      if (isRunning) {
+        console.log("⏱️ Auto-stopping after 5 seconds...");
+        recognition.stop();
+      }
+    }, 5000);
+  } catch (error) {
+    console.error("❌ Error:", error);
+    onStatusChanged("❌ Error: " + error.message, "error");
+  }
+}
+
+/**
+ * Test Speech Recognition - start listening and show raw events
+ */
+async function testStartSpeech() {
+  console.log("\n🎤 === TESTING SPEECH RECOGNITION START ===");
+  onStatusChanged("Testing speech recognition...", "active");
+
+  if (!transcriber.recognition) {
+    console.error("❌ Recognition object not available!");
+    onStatusChanged("❌ Recognition object not available", "error");
+    return;
+  }
+
+  if (transcriber.isTranscribing) {
+    console.warn("⚠️ Already transcribing! Stopping first...");
+    transcriber.stop();
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  console.log("📍 Starting speech recognition test...");
+  console.log("🎙️ Please speak now...");
+
+  try {
+    // Start listening with timeout
+    transcriber.recognition.start();
+
+    // Auto-stop after 5 seconds for testing
+    setTimeout(() => {
+      if (transcriber.isTranscribing) {
+        console.log("⏱️ 5 second timeout reached, stopping...");
+        transcriber.recognition.stop();
+      }
+    }, 5000);
+
+    // Listen for all events
+    const originalOnstart = transcriber.recognition.onstart;
+    const originalOnresult = transcriber.recognition.onresult;
+    const originalOnend = transcriber.recognition.onend;
+    const originalOnerror = transcriber.recognition.onerror;
+
+    transcriber.recognition.onstart = function (event) {
+      console.log("✓ EVENT: onstart");
+      originalOnstart?.call(this, event);
+    };
+
+    transcriber.recognition.onresult = function (event) {
+      console.log("✓ EVENT: onresult");
+      console.log("  Results count:", event.results.length);
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        const isFinal = event.results[i].isFinal;
+        console.log(`  [${i}] "${transcript}" (final: ${isFinal})`);
+      }
+      originalOnresult?.call(this, event);
+    };
+
+    transcriber.recognition.onend = function (event) {
+      console.log("✓ EVENT: onend");
+      originalOnend?.call(this, event);
+    };
+
+    transcriber.recognition.onerror = function (event) {
+      console.error("❌ EVENT: onerror -", event.error);
+      originalOnerror?.call(this, event);
+    };
+
+    onStatusChanged("🎤 Listening... (5 sec timeout)", "active");
+    console.log("\n✓ Speech recognition started. Waiting for events...\n");
+  } catch (error) {
+    console.error("❌ Error starting speech recognition:", error);
+    onStatusChanged("❌ Error: " + error.message, "error");
+  }
+}
+
 // Map language codes to full locale codes for TTS
 const LANG_MAP = {
   vi: "vi-VN",
@@ -99,6 +515,69 @@ function addToTranscriptionList(inputText, outputText) {
 }
 
 /**
+ * Request manual text input from user (fallback when network is unavailable)
+ * Uses custom modal instead of browser prompt() which doesn't work in Electron
+ */
+function requestManualInput(promptText = "Enter text to translate:") {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("inputModal");
+    const modalTitle = document.getElementById("modalTitle");
+    const modalInput = document.getElementById("modalInput");
+    const modalOk = document.getElementById("modalOk");
+    const modalCancel = document.getElementById("modalCancel");
+
+    // Set modal text
+    modalTitle.textContent = promptText;
+    modalInput.value = "";
+    modalInput.focus();
+
+    // Show modal
+    modal.style.display = "flex";
+
+    // Handle OK button
+    const handleOk = () => {
+      const inputText = modalInput.value.trim();
+      cleanup();
+      if (inputText) {
+        console.log("✓ Manual input received:", inputText);
+        onStatusChanged("Manual input ready", "success");
+        resolve(inputText);
+      } else {
+        resolve(null);
+      }
+    };
+
+    // Handle Cancel button
+    const handleCancel = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    // Handle Enter key
+    const handleKeyDown = (e) => {
+      if (e.key === "Enter" && e.ctrlKey) {
+        handleOk();
+      } else if (e.key === "Escape") {
+        handleCancel();
+      }
+    };
+
+    // Cleanup function
+    const cleanup = () => {
+      modal.style.display = "none";
+      modalOk.removeEventListener("click", handleOk);
+      modalCancel.removeEventListener("click", handleCancel);
+      modalInput.removeEventListener("keydown", handleKeyDown);
+    };
+
+    // Add event listeners
+    modalOk.addEventListener("click", handleOk);
+    modalCancel.addEventListener("click", handleCancel);
+    modalInput.addEventListener("keydown", handleKeyDown);
+  });
+}
+
+/**
  * Trigger auto-start recording when mic detects signal
  */
 async function triggerAutoStart() {
@@ -116,7 +595,21 @@ async function handleStartRecording() {
 
   try {
     // Wait for transcription from microphone
-    const transcribedText = await transcriber.fromMicrophone(inputLangFull);
+    let transcribedText = null;
+    try {
+      transcribedText = await transcriber.fromMicrophone(inputLangFull);
+    } catch (error) {
+      // Network error - offer manual input
+      if (error.message === "network_error") {
+        console.warn("⚠️ Network error detected - requesting manual input");
+        transcribedText = await requestManualInput("Network unavailable - please enter text:");
+        if (!transcribedText) {
+          throw new Error("No input provided");
+        }
+      } else {
+        throw error;
+      }
+    }
 
     if (!transcribedText) {
       throw new Error("No text transcribed");

@@ -14,11 +14,29 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
+      sandbox: false, // Disable sandbox to allow audio capture
     },
   });
 
   // Load file HTML
   mainWindow.loadFile("index.html");
+
+  // Set CSP headers for secure connections
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        "Content-Security-Policy": [
+          "default-src 'self'; " +
+            "connect-src 'self' https://*.google.com https://www.google.com https://api.mymemory.translated.net https://dns.google; " +
+            "script-src 'self' 'unsafe-inline'; " +
+            "style-src 'self' 'unsafe-inline'; " +
+            "media-src *; " +
+            "img-src 'self' data:;",
+        ],
+      },
+    });
+  });
 
   // Debug: Uncomment to open DevTools
   // mainWindow.webContents.openDevTools();
@@ -33,6 +51,25 @@ app.on("ready", () => {
 
   // Setup global hotkeys
   setupGlobalHotkeys();
+});
+
+// Grant audio/microphone permissions automatically
+app.whenReady().then(() => {
+  const { session } = require("electron");
+
+  // Set permission request handler for all sessions
+  session.defaultSession?.setPermissionRequestHandler((webContents, permission, callback) => {
+    // Auto-approve microphone/audio permissions
+    if (permission === "microphone" || permission === "audio" || permission === "media") {
+      console.log(`✓ Auto-approving ${permission} permission`);
+      callback(true);
+    } else {
+      console.log(`⚠️ Denying permission: ${permission}`);
+      callback(false);
+    }
+  });
+
+  console.log("✓ Permission handler registered");
 });
 
 /**
